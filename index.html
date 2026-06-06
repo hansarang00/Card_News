@@ -1,0 +1,951 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>카드뉴스 생성기</title>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Noto Sans KR', -apple-system, sans-serif; background: #f1f5f9; color: #1e293b; height: 100vh; overflow: hidden; }
+    .app { display: flex; height: 100vh; }
+
+    /* ── SIDEBAR ── */
+    .sidebar { width: 350px; min-width: 350px; background: #fff; display: flex; flex-direction: column; border-right: 1px solid #e2e8f0; height: 100vh; }
+    .sidebar-scroll { flex: 1; overflow-y: auto; }
+    .sidebar-scroll::-webkit-scrollbar { width: 4px; }
+    .sidebar-scroll::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 2px; }
+    .sidebar-bottom { padding: 14px 16px; border-top: 1px solid #e2e8f0; background: #fff; }
+
+    .logo { padding: 18px 20px 16px; background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%); color: #fff; flex-shrink: 0; }
+    .logo h1 { font-size: 17px; font-weight: 700; letter-spacing: -0.3px; }
+    .logo p { font-size: 11px; opacity: 0.75; margin-top: 3px; }
+
+    .section { padding: 14px 18px; border-bottom: 1px solid #f1f5f9; }
+    .sec-title { font-size: 10px; font-weight: 700; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 10px; }
+
+    .fg { margin-bottom: 10px; }
+    .fg:last-child { margin-bottom: 0; }
+    .fg label { display: block; font-size: 12px; color: #64748b; font-weight: 500; margin-bottom: 4px; }
+    .fg input[type=text], .fg textarea {
+      width: 100%; padding: 7px 10px;
+      border: 1.5px solid #e2e8f0; border-radius: 7px;
+      font-family: inherit; font-size: 13px; color: #1e293b;
+      background: #f8fafc; transition: border-color 0.15s, background 0.15s; line-height: 1.5;
+    }
+    .fg input[type=text]:focus, .fg textarea:focus { outline: none; border-color: #6366f1; background: #fff; }
+    .fg textarea { resize: vertical; min-height: 76px; }
+
+    .color-row { display: flex; gap: 7px; align-items: center; }
+    .color-row input[type=color] { width: 36px; height: 34px; padding: 3px; border: 1.5px solid #e2e8f0; border-radius: 7px; cursor: pointer; flex-shrink: 0; }
+    .color-row .fg { flex: 1; margin: 0; }
+
+    /* Template buttons */
+    .tmpl-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+    .tmpl-btn { border: 2px solid #e2e8f0; border-radius: 9px; padding: 0; cursor: pointer; background: #fff; overflow: hidden; transition: border-color 0.15s; font-family: inherit; }
+    .tmpl-btn:hover { border-color: #a5b4fc; }
+    .tmpl-btn.active { border-color: #6366f1; }
+    .tmpl-swatch { height: 40px; }
+    .tmpl-label { font-size: 11px; font-weight: 600; color: #64748b; padding: 4px 0 5px; text-align: center; display: block; }
+    .tmpl-btn.active .tmpl-label { color: #6366f1; }
+
+    /* Size buttons */
+    .size-row { display: flex; gap: 7px; }
+    .size-btn { flex: 1; border: 2px solid #e2e8f0; border-radius: 7px; padding: 7px 4px; cursor: pointer; background: #fff; font-family: inherit; font-size: 11px; color: #64748b; text-align: center; transition: all 0.15s; line-height: 1.5; }
+    .size-btn:hover { border-color: #a5b4fc; }
+    .size-btn.active { border-color: #6366f1; background: #eef2ff; color: #4338ca; font-weight: 600; }
+
+    /* Card list */
+    .card-list { display: flex; flex-direction: column; gap: 4px; }
+    .card-item { display: flex; align-items: center; gap: 8px; padding: 8px 10px; border-radius: 8px; cursor: pointer; border: 1.5px solid transparent; background: #f8fafc; transition: all 0.12s; }
+    .card-item:hover { background: #f1f5f9; }
+    .card-item.active { border-color: #6366f1; background: #eef2ff; }
+    .card-item .item-icon { width: 26px; height: 26px; border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 13px; flex-shrink: 0; }
+    .card-item .item-name { flex: 1; font-size: 12px; color: #334155; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .card-item.active .item-name { color: #4338ca; font-weight: 600; }
+    .card-item .item-badge { font-size: 10px; background: #e2e8f0; color: #64748b; padding: 2px 5px; border-radius: 4px; flex-shrink: 0; }
+    .card-item.active .item-badge { background: #c7d2fe; color: #4338ca; }
+    .card-item .item-del { color: #cbd5e1; cursor: pointer; padding: 2px 4px; border-radius: 4px; font-size: 13px; flex-shrink: 0; }
+    .card-item .item-del:hover { color: #ef4444; background: #fee2e2; }
+    .add-btns { display: flex; gap: 6px; margin-top: 8px; }
+
+    /* Buttons */
+    .btn { padding: 7px 13px; border-radius: 7px; font-size: 12px; font-family: inherit; font-weight: 600; cursor: pointer; border: none; transition: all 0.15s; display: inline-flex; align-items: center; gap: 4px; }
+    .btn-indigo { background: #6366f1; color: #fff; }
+    .btn-indigo:hover { background: #4f46e5; }
+    .btn-green { background: #10b981; color: #fff; }
+    .btn-green:hover { background: #059669; }
+    .btn-ghost { background: #f1f5f9; color: #475569; border: 1px solid #e2e8f0; }
+    .btn-ghost:hover { background: #e2e8f0; }
+    .btn-xs { padding: 4px 8px; font-size: 11px; }
+    .btn-full { width: 100%; justify-content: center; }
+
+    /* ── IMAGE UPLOAD UI ── */
+    .img-section { margin-top: 10px; }
+    .img-section-title { font-size: 12px; color: #64748b; font-weight: 600; margin-bottom: 6px; display: flex; align-items: center; gap: 6px; }
+    .img-section-title span { font-size: 14px; }
+
+    /* Drop / click area */
+    .img-dropzone {
+      border: 2px dashed #cbd5e1; border-radius: 10px;
+      padding: 16px 12px; text-align: center; cursor: pointer;
+      transition: all 0.15s; background: #f8fafc; position: relative;
+    }
+    .img-dropzone:hover, .img-dropzone.dragover { border-color: #6366f1; background: #eef2ff; }
+    .img-dropzone input[type=file] { position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%; }
+    .img-dropzone .dz-icon { font-size: 24px; margin-bottom: 5px; }
+    .img-dropzone .dz-text { font-size: 12px; color: #64748b; line-height: 1.4; }
+    .img-dropzone .dz-text b { color: #6366f1; }
+
+    /* Thumbnail row */
+    .img-thumb-row { display: flex; gap: 8px; align-items: flex-start; margin-top: 8px; }
+    .img-thumb-wrap { position: relative; flex-shrink: 0; }
+    .img-thumb-wrap img { width: 72px; height: 72px; object-fit: cover; border-radius: 7px; display: block; border: 1.5px solid #e2e8f0; }
+    .img-thumb-del { position: absolute; top: -5px; right: -5px; background: #ef4444; color: #fff; border: none; border-radius: 50%; width: 18px; height: 18px; font-size: 11px; cursor: pointer; display: flex; align-items: center; justify-content: center; line-height: 1; font-weight: 700; }
+    .img-thumb-del:hover { background: #dc2626; }
+    .img-thumb-info { flex: 1; font-size: 11px; color: #64748b; }
+    .img-thumb-name { font-weight: 600; color: #334155; word-break: break-all; margin-bottom: 4px; font-size: 12px; }
+
+    /* Image layout mode */
+    .img-mode-row { display: flex; gap: 5px; margin-top: 8px; }
+    .img-mode-btn { flex: 1; padding: 6px 4px; border: 1.5px solid #e2e8f0; border-radius: 6px; font-size: 11px; cursor: pointer; background: #fff; font-family: inherit; color: #64748b; text-align: center; transition: all 0.12s; line-height: 1.3; }
+    .img-mode-btn:hover { border-color: #a5b4fc; }
+    .img-mode-btn.active { border-color: #6366f1; background: #eef2ff; color: #4338ca; font-weight: 700; }
+
+    /* Opacity slider */
+    .opacity-row { display: flex; align-items: center; gap: 8px; margin-top: 8px; }
+    .opacity-row label { font-size: 11px; color: #64748b; white-space: nowrap; }
+    .opacity-row input[type=range] { flex: 1; accent-color: #6366f1; }
+    .opacity-row .val { font-size: 11px; color: #6366f1; font-weight: 700; min-width: 28px; text-align: right; }
+
+    /* ── MAIN ── */
+    .main { flex: 1; overflow-y: auto; padding: 22px; }
+    .main::-webkit-scrollbar { width: 5px; }
+    .main::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
+    .main-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 18px; }
+    .main-title { font-size: 14px; font-weight: 600; color: #475569; }
+    .cards-grid { display: flex; flex-wrap: wrap; gap: 14px; }
+
+    .card-wrap { background: #fff; border-radius: 10px; overflow: hidden; box-shadow: 0 1px 5px rgba(0,0,0,0.08); cursor: pointer; transition: box-shadow 0.15s, transform 0.15s; border: 2.5px solid transparent; }
+    .card-wrap:hover { box-shadow: 0 4px 14px rgba(0,0,0,0.11); transform: translateY(-2px); }
+    .card-wrap.active { border-color: #6366f1; box-shadow: 0 4px 14px rgba(99,102,241,0.2); }
+    .card-wrap canvas { display: block; }
+    .card-foot { padding: 7px 10px; display: flex; align-items: center; justify-content: space-between; border-top: 1px solid #f1f5f9; }
+    .card-foot-label { font-size: 11px; color: #94a3b8; font-weight: 500; }
+
+    /* Loading overlay */
+    .overlay { display: none; position: fixed; inset: 0; background: rgba(15,23,42,0.55); z-index: 999; align-items: center; justify-content: center; backdrop-filter: blur(3px); }
+    .overlay.show { display: flex; }
+    .overlay-box { background: #fff; padding: 28px 36px; border-radius: 14px; text-align: center; }
+    .spinner { width: 34px; height: 34px; border: 3px solid #e2e8f0; border-top-color: #6366f1; border-radius: 50%; animation: spin 0.7s linear infinite; margin: 0 auto 12px; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .font-notice { background: #fef9c3; border: 1px solid #fde047; border-radius: 7px; padding: 8px 12px; font-size: 12px; color: #713f12; margin-bottom: 14px; display: none; }
+    .font-notice.show { display: block; }
+
+    /* Divider */
+    .editor-divider { border: none; border-top: 1px solid #f1f5f9; margin: 12px 0; }
+  </style>
+</head>
+<body>
+<div class="app">
+
+  <!-- ══════════════ SIDEBAR ══════════════ -->
+  <div class="sidebar">
+    <div class="logo">
+      <h1>🃏 카드뉴스 생성기</h1>
+      <p>내용만 입력하면 PNG로 완성!</p>
+    </div>
+
+    <div class="sidebar-scroll">
+
+      <!-- 기본 설정 -->
+      <div class="section">
+        <div class="sec-title">기본 설정</div>
+
+        <div class="fg">
+          <label>브랜드 / 채널명</label>
+          <input type="text" id="brandName" value="My Brand" oninput="onGlobalChange()">
+        </div>
+
+        <div class="fg">
+          <label>사이즈</label>
+          <div class="size-row">
+            <button class="size-btn active" onclick="onSizeChange('square',this)">정사각형<br><span style="font-weight:400">1080×1080</span></button>
+            <button class="size-btn" onclick="onSizeChange('portrait',this)">세로형<br><span style="font-weight:400">1080×1350</span></button>
+          </div>
+        </div>
+
+        <div class="fg">
+          <label>템플릿 스타일</label>
+          <div class="tmpl-row">
+            <button class="tmpl-btn active" onclick="onTemplateChange('modern',this)">
+              <div class="tmpl-swatch" style="background:linear-gradient(135deg,#4f46e5,#7c3aed)"></div>
+              <span class="tmpl-label">모던</span>
+            </button>
+            <button class="tmpl-btn" onclick="onTemplateChange('dark',this)">
+              <div class="tmpl-swatch" style="background:linear-gradient(135deg,#1e293b,#0f172a)"></div>
+              <span class="tmpl-label">다크</span>
+            </button>
+            <button class="tmpl-btn" onclick="onTemplateChange('warm',this)">
+              <div class="tmpl-swatch" style="background:linear-gradient(135deg,#f97316,#dc2626)"></div>
+              <span class="tmpl-label">웜톤</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="fg">
+          <label>포인트 색상 1</label>
+          <div class="color-row">
+            <input type="color" id="c1pick" value="#4f46e5" oninput="onColorPickChange()">
+            <div class="fg"><input type="text" id="c1text" value="#4f46e5" oninput="onColorTextChange('c1')"></div>
+          </div>
+        </div>
+
+        <div class="fg">
+          <label>포인트 색상 2</label>
+          <div class="color-row">
+            <input type="color" id="c2pick" value="#7c3aed" oninput="onColorPickChange()">
+            <div class="fg"><input type="text" id="c2text" value="#7c3aed" oninput="onColorTextChange('c2')"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 카드 목록 -->
+      <div class="section">
+        <div class="sec-title">카드 목록</div>
+        <div class="card-list" id="cardList"></div>
+        <div class="add-btns">
+          <button class="btn btn-ghost" onclick="addCard('content')">＋ 내용 카드</button>
+          <button class="btn btn-ghost" onclick="addCard('end')">＋ 마무리</button>
+        </div>
+      </div>
+
+      <!-- 카드 편집 -->
+      <div class="section">
+        <div class="sec-title">✏️ 카드 편집</div>
+        <div id="editorFields"></div>
+      </div>
+
+    </div>
+
+    <div class="sidebar-bottom">
+      <button class="btn btn-green btn-full" onclick="downloadAll()">⬇ 전체 PNG 다운로드</button>
+    </div>
+  </div>
+
+  <!-- ══════════════ MAIN PREVIEW ══════════════ -->
+  <div class="main">
+    <div class="main-header">
+      <span class="main-title">미리보기</span>
+      <button class="btn btn-ghost btn-xs" onclick="renderAll()">↺ 새로고침</button>
+    </div>
+    <div class="font-notice" id="fontNotice">⚠️ 폰트를 불러오는 중입니다. 잠시 후 자동으로 렌더링됩니다.</div>
+    <div class="cards-grid" id="cardsGrid"></div>
+  </div>
+</div>
+
+<div class="overlay" id="overlay">
+  <div class="overlay-box">
+    <div class="spinner"></div>
+    <p style="font-size:14px;color:#475569;font-weight:500">PNG 이미지 생성 중...</p>
+  </div>
+</div>
+
+<script>
+// ================================================================
+// STATE
+// ================================================================
+const SIZES = { square: [1080, 1080], portrait: [1080, 1350] };
+const PREVIEW_W = 255;
+
+const G = {
+  tmpl: 'modern',
+  size: 'square',
+  c1: '#4f46e5',
+  c2: '#7c3aed',
+  brand: 'My Brand',
+  activeIdx: 0,
+  cards: [
+    { id:1, type:'cover',   title:'카드뉴스\n제목을 입력하세요', subtitle:'한 줄 요약 또는 부제목', imgData:null, _imgEl:null, imgMode:'bg', imgOpacity:60 },
+    { id:2, type:'content', heading:'핵심 포인트 1', body:'여기에 내용을 입력하세요.\n간결하고 명확하게 전달하세요.', imgData:null, _imgEl:null, imgMode:'bottom', imgOpacity:100 },
+    { id:3, type:'content', heading:'핵심 포인트 2', body:'각 카드는 하나의 메시지만 담아\n독자의 집중력을 유지시키세요.', imgData:null, _imgEl:null, imgMode:'bottom', imgOpacity:100 },
+    { id:4, type:'end',     message:'읽어주셔서\n감사합니다 🙏', cta:'팔로우하고 더 많은 정보를 받아보세요', handle:'@yourhandle', imgData:null, _imgEl:null, imgMode:'bg', imgOpacity:50 }
+  ]
+};
+let _uid = 5;
+
+// ================================================================
+// CANVAS HELPERS
+// ================================================================
+function hexToRgb(h) {
+  const v = h.replace('#','');
+  return [parseInt(v.slice(0,2),16), parseInt(v.slice(2,4),16), parseInt(v.slice(4,6),16)];
+}
+function rgba(hex, a) {
+  const [r,g,b] = hexToRgb(hex);
+  return `rgba(${r},${g},${b},${a})`;
+}
+function mkGrad(ctx, x0,y0,x1,y1, c1,c2) {
+  const g = ctx.createLinearGradient(x0,y0,x1,y1);
+  g.addColorStop(0, c1); g.addColorStop(1, c2);
+  return g;
+}
+function rrect(ctx, x,y,w,h,r) {
+  ctx.beginPath();
+  ctx.moveTo(x+r, y);
+  ctx.lineTo(x+w-r, y); ctx.quadraticCurveTo(x+w, y, x+w, y+r);
+  ctx.lineTo(x+w, y+h-r); ctx.quadraticCurveTo(x+w, y+h, x+w-r, y+h);
+  ctx.lineTo(x+r, y+h); ctx.quadraticCurveTo(x, y+h, x, y+h-r);
+  ctx.lineTo(x, y+r); ctx.quadraticCurveTo(x, y, x+r, y);
+  ctx.closePath();
+}
+function wrapLines(ctx, text, maxW) {
+  const result = [];
+  for (const para of (text||'').split('\n')) {
+    if (!para) { result.push(''); continue; }
+    let line = '';
+    for (const ch of [...para]) {
+      const test = line + ch;
+      if (ctx.measureText(test).width > maxW && line) { result.push(line); line = ch; }
+      else line = test;
+    }
+    if (line) result.push(line);
+  }
+  return result;
+}
+function drawWrapped(ctx, text, x, y, maxW, lh) {
+  const lines = wrapLines(ctx, text, maxW);
+  lines.forEach((l,i) => ctx.fillText(l, x, y + i*lh));
+  return lines.length;
+}
+
+// Cover-fit image onto a rect area (center crop)
+function drawImgCover(ctx, img, x, y, w, h, opacity) {
+  if (!img) return;
+  ctx.save();
+  ctx.globalAlpha = opacity / 100;
+  ctx.beginPath();
+  ctx.rect(x, y, w, h);
+  ctx.clip();
+  const scale = Math.max(w / img.width, h / img.height);
+  const iw = img.width * scale, ih = img.height * scale;
+  const ix = x + (w - iw) / 2, iy = y + (h - ih) / 2;
+  ctx.drawImage(img, ix, iy, iw, ih);
+  ctx.restore();
+}
+
+// ================================================================
+// RENDER: COVER
+// ================================================================
+function renderCover(ctx, W, H, card) {
+  const {tmpl, c1, c2, brand} = G;
+  const hasImg = card._imgEl && card.imgMode === 'bg';
+
+  // Base background color/gradient first
+  if (tmpl === 'dark') {
+    ctx.fillStyle = mkGrad(ctx, 0,0,W,H, '#1e293b','#0f172a');
+  } else if (tmpl === 'warm') {
+    ctx.fillStyle = mkGrad(ctx, 0,H,W,0, c1,c2);
+  } else {
+    ctx.fillStyle = mkGrad(ctx, 0,0,W,H, c1,c2);
+  }
+  ctx.fillRect(0,0,W,H);
+
+  // If image in bg mode: draw image, then gradient overlay for text legibility
+  if (hasImg) {
+    drawImgCover(ctx, card._imgEl, 0, 0, W, H, card.imgOpacity ?? 60);
+    // Dark overlay gradient so text stays readable
+    const ov = ctx.createLinearGradient(0, 0, 0, H);
+    ov.addColorStop(0, 'rgba(0,0,0,0.55)');
+    ov.addColorStop(0.5, 'rgba(0,0,0,0.35)');
+    ov.addColorStop(1, 'rgba(0,0,0,0.65)');
+    ctx.fillStyle = ov;
+    ctx.fillRect(0,0,W,H);
+  } else {
+    // Decorative circles (no image)
+    ctx.beginPath(); ctx.arc(W*0.88, -W*0.06, W*0.38, 0, Math.PI*2);
+    ctx.fillStyle = rgba('#fff', 0.07); ctx.fill();
+    ctx.beginPath(); ctx.arc(-W*0.04, H*0.88, W*0.28, 0, Math.PI*2);
+    ctx.fillStyle = rgba('#fff', 0.07); ctx.fill();
+  }
+
+  // Brand pill
+  ctx.font = `500 ${W*0.024}px 'Noto Sans KR', sans-serif`;
+  const bw = ctx.measureText(brand).width + 40;
+  const bx=78, by=68;
+  rrect(ctx, bx, by, bw, 46, 23);
+  ctx.fillStyle = rgba('#fff', 0.22); ctx.fill();
+  ctx.fillStyle = '#ffffff';
+  ctx.textAlign = 'left';
+  ctx.fillText(brand, bx+18, by+31);
+
+  // Title
+  ctx.font = `900 ${W*0.070}px 'Noto Sans KR', sans-serif`;
+  ctx.fillStyle = '#ffffff';
+  ctx.textAlign = 'left';
+  const titleLines = wrapLines(ctx, card.title||'', W-160);
+  const titleY = H * 0.36;
+  const titleLH = W * 0.082;
+  titleLines.forEach((l,i) => ctx.fillText(l, 80, titleY + i*titleLH));
+
+  // Accent bar
+  const barY = titleY + titleLines.length * titleLH + 32;
+  ctx.fillStyle = rgba('#fff', 0.5);
+  ctx.fillRect(80, barY, 64, 5);
+
+  // Subtitle
+  ctx.font = `300 ${W*0.030}px 'Noto Sans KR', sans-serif`;
+  ctx.fillStyle = rgba('#fff', 0.78);
+  drawWrapped(ctx, card.subtitle||'', 80, barY+40, W-160, W*0.038);
+
+  // Swipe hint
+  ctx.font = `400 ${W*0.020}px 'Noto Sans KR', sans-serif`;
+  ctx.fillStyle = rgba('#fff', 0.45);
+  ctx.textAlign = 'right';
+  ctx.fillText('swipe →', W-80, H-68);
+}
+
+// ================================================================
+// RENDER: CONTENT
+// ================================================================
+function renderContent(ctx, W, H, card, num, total) {
+  const {tmpl, c1, c2, brand} = G;
+  const headerH = H * 0.27;
+  const isDark = tmpl === 'dark';
+  const hasImg = card._imgEl != null;
+  const imgMode = card.imgMode || 'bottom'; // 'bottom' or 'bg'
+
+  if (hasImg && imgMode === 'bg') {
+    // BG image mode: image fills card, heavy overlay for text
+    ctx.fillStyle = isDark ? '#0f172a' : '#f8fafc';
+    ctx.fillRect(0,0,W,H);
+    drawImgCover(ctx, card._imgEl, 0, 0, W, H, card.imgOpacity ?? 100);
+    // Dark scrim so header and text are readable
+    ctx.fillStyle = isDark ? 'rgba(15,23,42,0.75)' : 'rgba(15,23,42,0.55)';
+    ctx.fillRect(0,0,W,H);
+  } else {
+    // Standard or bottom-image background
+    ctx.fillStyle = isDark ? '#0f172a' : '#f8fafc';
+    ctx.fillRect(0,0,W,H);
+  }
+
+  // Header gradient (always on top of bg)
+  if (isDark) {
+    ctx.fillStyle = mkGrad(ctx, 0,0,W,headerH, '#1e293b','#0f172a');
+  } else {
+    ctx.fillStyle = mkGrad(ctx, 0,0,W,headerH, c1,c2);
+  }
+  ctx.fillRect(0,0,W,headerH);
+
+  // Deco circle in header
+  ctx.beginPath(); ctx.arc(W*0.82, headerH*0.5, W*0.17, 0, Math.PI*2);
+  ctx.fillStyle = rgba('#fff', 0.08); ctx.fill();
+
+  // Brand
+  ctx.font = `500 ${W*0.021}px 'Noto Sans KR', sans-serif`;
+  ctx.fillStyle = rgba('#fff', 0.7);
+  ctx.textAlign = 'left';
+  ctx.fillText(brand, 80, 64);
+
+  // Large watermark number
+  ctx.font = `900 ${W*0.18}px 'Noto Sans KR', sans-serif`;
+  ctx.fillStyle = rgba('#fff', 0.10);
+  ctx.textAlign = 'right';
+  ctx.fillText(String(num).padStart(2,'0'), W-36, headerH+14);
+
+  // Counter
+  ctx.font = `600 ${W*0.028}px 'Noto Sans KR', sans-serif`;
+  ctx.fillStyle = rgba('#fff', 0.92);
+  ctx.textAlign = 'right';
+  ctx.fillText(`${String(num).padStart(2,'0')} / ${String(total).padStart(2,'0')}`, W-80, headerH-32);
+
+  // Text colors (bg mode uses white text)
+  const bodyColor = (hasImg && imgMode === 'bg') ? '#ffffff' : (isDark ? '#e2e8f0' : '#1e293b');
+  const subColor  = (hasImg && imgMode === 'bg') ? rgba('#fff',0.82) : (isDark ? '#94a3b8' : '#475569');
+  const cx = 80, maxW = W-160;
+
+  // How much vertical space for text (reserve bottom for image if bottom mode)
+  const imgAreaH = (hasImg && imgMode === 'bottom') ? H * 0.36 : 0;
+  const textAreaBottom = H - imgAreaH - 20;
+  const cy = headerH + 58;
+
+  // Heading
+  ctx.font = `700 ${W*0.052}px 'Noto Sans KR', sans-serif`;
+  ctx.fillStyle = bodyColor;
+  ctx.textAlign = 'left';
+  const headLines = wrapLines(ctx, card.heading||'', maxW);
+  const headLH = W*0.062;
+  headLines.forEach((l,i) => ctx.fillText(l, cx, cy + i*headLH));
+
+  // Accent bar
+  const accY = cy + headLines.length*headLH + 26;
+  ctx.fillStyle = (hasImg && imgMode === 'bg') ? rgba('#fff',0.7) : c1;
+  ctx.fillRect(cx, accY, 52, 5);
+
+  // Body text
+  ctx.font = `300 ${W*0.030}px 'Noto Sans KR', sans-serif`;
+  ctx.fillStyle = subColor;
+  drawWrapped(ctx, card.body||'', cx, accY+42, maxW, W*0.040);
+
+  // Bottom image area
+  if (hasImg && imgMode === 'bottom') {
+    const imgY = H - imgAreaH - 14; // above bottom bar
+    drawImgCover(ctx, card._imgEl, 0, imgY, W, imgAreaH, card.imgOpacity ?? 100);
+    // Top fade so image blends into content
+    const fade = ctx.createLinearGradient(0, imgY, 0, imgY + 70);
+    fade.addColorStop(0, isDark ? 'rgba(15,23,42,1)' : 'rgba(248,250,252,1)');
+    fade.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.fillStyle = fade;
+    ctx.fillRect(0, imgY, W, 70);
+  }
+
+  // Bottom accent bar
+  ctx.fillStyle = c1;
+  ctx.fillRect(0, H-14, W, 14);
+}
+
+// ================================================================
+// RENDER: END
+// ================================================================
+function renderEnd(ctx, W, H, card) {
+  const {tmpl, c1, c2, brand} = G;
+  const hasImg = card._imgEl && card.imgMode === 'bg';
+
+  // BG gradient
+  if (tmpl === 'dark') {
+    ctx.fillStyle = mkGrad(ctx, 0,0,W,H, '#0f172a','#1e293b');
+  } else if (tmpl === 'warm') {
+    ctx.fillStyle = mkGrad(ctx, 0,H,W,0, c1,c2);
+  } else {
+    ctx.fillStyle = mkGrad(ctx, 0,0,W,H, c1,c2);
+  }
+  ctx.fillRect(0,0,W,H);
+
+  // Bg image
+  if (hasImg) {
+    drawImgCover(ctx, card._imgEl, 0, 0, W, H, card.imgOpacity ?? 50);
+    const ov = ctx.createLinearGradient(0, 0, 0, H);
+    ov.addColorStop(0, 'rgba(0,0,0,0.6)');
+    ov.addColorStop(1, 'rgba(0,0,0,0.6)');
+    ctx.fillStyle = ov;
+    ctx.fillRect(0,0,W,H);
+  } else {
+    ctx.beginPath(); ctx.arc(W*0.85, H*0.15, W*0.28, 0, Math.PI*2);
+    ctx.fillStyle = rgba('#fff', 0.06); ctx.fill();
+    ctx.beginPath(); ctx.arc(W*0.1, H*0.82, W*0.22, 0, Math.PI*2);
+    ctx.fillStyle = rgba('#fff', 0.06); ctx.fill();
+  }
+
+  // Brand
+  ctx.font = `500 ${W*0.024}px 'Noto Sans KR', sans-serif`;
+  ctx.fillStyle = rgba('#fff', 0.55);
+  ctx.textAlign = 'center';
+  ctx.fillText(brand, W/2, H*0.25);
+
+  // Message
+  ctx.font = `900 ${W*0.068}px 'Noto Sans KR', sans-serif`;
+  ctx.fillStyle = '#ffffff';
+  ctx.textAlign = 'center';
+  const msgLines = wrapLines(ctx, card.message||'', W-180);
+  const msgLH = W*0.080;
+  const msgStartY = H * 0.35;
+  msgLines.forEach((l,i) => ctx.fillText(l, W/2, msgStartY + i*msgLH));
+
+  const divY = msgStartY + msgLines.length*msgLH + 38;
+  ctx.fillStyle = rgba('#fff', 0.35);
+  ctx.fillRect(W/2-48, divY, 96, 2);
+
+  ctx.font = `300 ${W*0.026}px 'Noto Sans KR', sans-serif`;
+  ctx.fillStyle = rgba('#fff', 0.78);
+  ctx.textAlign = 'center';
+  ctx.fillText(card.cta||'', W/2, divY+42);
+
+  ctx.font = `700 ${W*0.038}px 'Noto Sans KR', sans-serif`;
+  ctx.fillStyle = '#ffffff';
+  ctx.fillText(card.handle||'', W/2, divY+102);
+}
+
+// ================================================================
+// DRAW CARD TO CANVAS
+// ================================================================
+function drawCard(canvas, card) {
+  const [W, H] = SIZES[G.size];
+  canvas.width = W; canvas.height = H;
+  const ctx = canvas.getContext('2d');
+  ctx.clearRect(0,0,W,H);
+
+  const contentCards = G.cards.filter(c => c.type === 'content');
+  const totalContent = contentCards.length;
+  const contentNum = contentCards.findIndex(c => c.id === card.id) + 1;
+
+  if (card.type === 'cover')   renderCover(ctx, W, H, card);
+  if (card.type === 'content') renderContent(ctx, W, H, card, contentNum, totalContent);
+  if (card.type === 'end')     renderEnd(ctx, W, H, card);
+}
+
+// ================================================================
+// IMAGE UPLOAD HELPERS
+// ================================================================
+function loadImageEl(dataUrl) {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => resolve(img);
+    img.onerror = () => resolve(null);
+    img.src = dataUrl;
+  });
+}
+
+async function onImageUpload(cardId, file) {
+  if (!file || !file.type.startsWith('image/')) return;
+  const card = G.cards.find(c => c.id === cardId);
+  if (!card) return;
+
+  const reader = new FileReader();
+  reader.onload = async (e) => {
+    card.imgData = e.target.result;
+    card._imgEl = await loadImageEl(card.imgData);
+    refreshCardCanvas(card);
+    renderEditor(); // update thumbnail in sidebar
+  };
+  reader.readAsDataURL(file);
+}
+
+function removeCardImage(cardId) {
+  const card = G.cards.find(c => c.id === cardId);
+  if (!card) return;
+  card.imgData = null;
+  card._imgEl = null;
+  refreshCardCanvas(card);
+  renderEditor();
+}
+
+function setImgMode(cardId, mode) {
+  const card = G.cards.find(c => c.id === cardId);
+  if (!card) return;
+  card.imgMode = mode;
+  refreshCardCanvas(card);
+  // Update mode buttons in editor
+  document.querySelectorAll('.img-mode-btn').forEach(b => {
+    b.classList.toggle('active', b.dataset.mode === mode);
+  });
+}
+
+function setImgOpacity(cardId, val) {
+  const card = G.cards.find(c => c.id === cardId);
+  if (!card) return;
+  card.imgOpacity = parseInt(val);
+  document.getElementById('opacityVal_' + cardId) && (document.getElementById('opacityVal_' + cardId).textContent = val + '%');
+  refreshCardCanvas(card);
+}
+
+function refreshCardCanvas(card) {
+  const cv = document.getElementById('cv_' + card.id);
+  if (cv) document.fonts.ready.then(() => drawCard(cv, card));
+}
+
+// Drag & drop support
+function onDragOver(e, el) {
+  e.preventDefault();
+  el.classList.add('dragover');
+}
+function onDragLeave(el) { el.classList.remove('dragover'); }
+function onDrop(e, cardId) {
+  e.preventDefault();
+  document.querySelectorAll('.img-dropzone').forEach(el => el.classList.remove('dragover'));
+  const file = e.dataTransfer?.files?.[0];
+  if (file) onImageUpload(cardId, file);
+}
+
+// ================================================================
+// UI: GRID
+// ================================================================
+function buildGrid() {
+  const grid = document.getElementById('cardsGrid');
+  grid.innerHTML = '';
+  const [W, H] = SIZES[G.size];
+  const scale = PREVIEW_W / W;
+  const pH = Math.round(H * scale);
+
+  G.cards.forEach((card, i) => {
+    const wrap = document.createElement('div');
+    wrap.className = 'card-wrap' + (i === G.activeIdx ? ' active' : '');
+    wrap.dataset.i = i;
+    wrap.onclick = () => selectCard(i);
+
+    const canvas = document.createElement('canvas');
+    canvas.id = 'cv_' + card.id;
+    canvas.style.width = PREVIEW_W + 'px';
+    canvas.style.height = pH + 'px';
+
+    const foot = document.createElement('div');
+    foot.className = 'card-foot';
+    const labels = {cover:'커버', content:'내용', end:'마무리'};
+    const imgBadge = card.imgData ? ' 🖼' : '';
+    foot.innerHTML = `<span class="card-foot-label">${labels[card.type]} ${i+1}${imgBadge}</span>
+      <button class="btn btn-ghost btn-xs" onclick="event.stopPropagation();dlCard(${i})">↓ PNG</button>`;
+
+    wrap.appendChild(canvas);
+    wrap.appendChild(foot);
+    grid.appendChild(wrap);
+  });
+}
+
+function renderAll() {
+  document.fonts.ready.then(() => {
+    G.cards.forEach(card => {
+      const cv = document.getElementById('cv_' + card.id);
+      if (cv) drawCard(cv, card);
+    });
+    updateActiveHighlight();
+  });
+}
+
+function updateActiveHighlight() {
+  document.querySelectorAll('.card-wrap').forEach((el, i) => {
+    el.classList.toggle('active', i === G.activeIdx);
+  });
+}
+
+function rebuildAndRender() {
+  buildGrid();
+  renderAll();
+  renderCardList();
+  renderEditor();
+}
+
+// ================================================================
+// UI: CARD LIST
+// ================================================================
+function renderCardList() {
+  const list = document.getElementById('cardList');
+  list.innerHTML = '';
+  const icons = {cover:'📌', content:'📝', end:'🎯'};
+  const bgs   = {cover:'#eef2ff', content:'#f0fdf4', end:'#fdf4ff'};
+  const labels = {cover:'커버', content:'내용', end:'마무리'};
+
+  G.cards.forEach((card, i) => {
+    const name = card.type === 'cover'   ? (card.title?.split('\n')[0] || '커버') :
+                 card.type === 'end'     ? (card.message?.split('\n')[0] || '마무리') :
+                                           (card.heading || '내용 카드');
+    const imgIndicator = card.imgData ? ' <span style="font-size:10px;color:#6366f1">🖼</span>' : '';
+    const item = document.createElement('div');
+    item.className = 'card-item' + (i === G.activeIdx ? ' active' : '');
+    item.innerHTML = `
+      <div class="item-icon" style="background:${bgs[card.type]}">${icons[card.type]}</div>
+      <span class="item-name">${esc(name.slice(0,16))}${imgIndicator}</span>
+      <span class="item-badge">${labels[card.type]}</span>
+      ${card.type !== 'cover' ? `<span class="item-del" onclick="event.stopPropagation();deleteCard(${i})" title="삭제">✕</span>` : ''}
+    `;
+    item.onclick = () => selectCard(i);
+    list.appendChild(item);
+  });
+}
+
+// ================================================================
+// UI: EDITOR
+// ================================================================
+function buildImgUploaderHTML(card) {
+  const cid = card.id;
+  const isCoverOrEnd = card.type === 'cover' || card.type === 'end';
+
+  // Mode options
+  const modeOptions = isCoverOrEnd
+    ? `<button class="img-mode-btn ${card.imgMode==='bg'?'active':''}" data-mode="bg" onclick="setImgMode(${cid},'bg')">🖼 배경 이미지</button>`
+    : `<button class="img-mode-btn ${card.imgMode==='bottom'?'active':''}" data-mode="bottom" onclick="setImgMode(${cid},'bottom')">⬇ 하단 배치</button>
+       <button class="img-mode-btn ${card.imgMode==='bg'?'active':''}" data-mode="bg" onclick="setImgMode(${cid},'bg')">🖼 전체 배경</button>`;
+
+  const thumbHTML = card.imgData ? `
+    <div class="img-thumb-row">
+      <div class="img-thumb-wrap">
+        <img src="${card.imgData}" alt="업로드된 이미지">
+        <button class="img-thumb-del" onclick="removeCardImage(${cid})" title="이미지 삭제">✕</button>
+      </div>
+      <div class="img-thumb-info">
+        <div class="img-thumb-name">이미지 등록됨 ✓</div>
+        <div>레이아웃 방식을 선택하세요</div>
+      </div>
+    </div>
+    <div class="img-mode-row">${modeOptions}</div>
+    <div class="opacity-row">
+      <label>불투명도</label>
+      <input type="range" min="10" max="100" value="${card.imgOpacity ?? (isCoverOrEnd?60:100)}"
+        oninput="setImgOpacity(${cid}, this.value)">
+      <span class="val" id="opacityVal_${cid}">${card.imgOpacity ?? (isCoverOrEnd?60:100)}%</span>
+    </div>
+  ` : `
+    <div class="img-dropzone"
+      ondragover="onDragOver(event,this)" ondragleave="onDragLeave(this)" ondrop="onDrop(event,${cid})">
+      <input type="file" accept="image/*" onchange="onImageUpload(${cid}, this.files[0])">
+      <div class="dz-icon">🖼️</div>
+      <div class="dz-text"><b>클릭</b>하거나 이미지를 드래그하세요<br>JPG, PNG, WebP 지원</div>
+    </div>
+  `;
+
+  return `
+    <hr class="editor-divider">
+    <div class="img-section">
+      <div class="img-section-title"><span>🖼️</span> 이미지</div>
+      ${thumbHTML}
+    </div>
+  `;
+}
+
+function renderEditor() {
+  const card = G.cards[G.activeIdx];
+  if (!card) return;
+  const el = document.getElementById('editorFields');
+  const imgHTML = buildImgUploaderHTML(card);
+
+  if (card.type === 'cover') {
+    el.innerHTML = `
+      <div class="fg"><label>제목 (Enter로 줄바꿈)</label>
+        <textarea rows="3" oninput="onField('title',this.value)">${esc(card.title)}</textarea></div>
+      <div class="fg"><label>부제목</label>
+        <input type="text" value="${esc(card.subtitle||'')}" oninput="onField('subtitle',this.value)"></div>
+      ${imgHTML}`;
+  } else if (card.type === 'content') {
+    el.innerHTML = `
+      <div class="fg"><label>헤딩 (제목)</label>
+        <input type="text" value="${esc(card.heading||'')}" oninput="onField('heading',this.value)"></div>
+      <div class="fg"><label>본문 내용</label>
+        <textarea rows="5" oninput="onField('body',this.value)">${esc(card.body||'')}</textarea></div>
+      ${imgHTML}`;
+  } else if (card.type === 'end') {
+    el.innerHTML = `
+      <div class="fg"><label>마무리 메시지</label>
+        <textarea rows="3" oninput="onField('message',this.value)">${esc(card.message||'')}</textarea></div>
+      <div class="fg"><label>CTA 문구</label>
+        <input type="text" value="${esc(card.cta||'')}" oninput="onField('cta',this.value)"></div>
+      <div class="fg"><label>소셜 핸들 (예: @brand)</label>
+        <input type="text" value="${esc(card.handle||'')}" oninput="onField('handle',this.value)"></div>
+      ${imgHTML}`;
+  }
+}
+
+// ================================================================
+// EVENT HANDLERS
+// ================================================================
+function onGlobalChange() {
+  G.brand = document.getElementById('brandName').value;
+  renderAll(); renderCardList();
+}
+function onColorPickChange() {
+  G.c1 = document.getElementById('c1pick').value;
+  G.c2 = document.getElementById('c2pick').value;
+  document.getElementById('c1text').value = G.c1;
+  document.getElementById('c2text').value = G.c2;
+  renderAll();
+}
+function onColorTextChange(which) {
+  const val = document.getElementById(which+'text').value.trim();
+  if (/^#[0-9a-fA-F]{6}$/.test(val)) {
+    G[which] = val;
+    document.getElementById(which+'pick').value = val;
+    renderAll();
+  }
+}
+function onTemplateChange(name, btn) {
+  G.tmpl = name;
+  document.querySelectorAll('.tmpl-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  const presets = { modern:['#4f46e5','#7c3aed'], dark:['#4f46e5','#7c3aed'], warm:['#f97316','#dc2626'] };
+  if (presets[name]) {
+    G.c1 = presets[name][0]; G.c2 = presets[name][1];
+    document.getElementById('c1pick').value = G.c1; document.getElementById('c2pick').value = G.c2;
+    document.getElementById('c1text').value = G.c1; document.getElementById('c2text').value = G.c2;
+  }
+  renderAll();
+}
+function onSizeChange(size, btn) {
+  G.size = size;
+  document.querySelectorAll('.size-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  rebuildAndRender();
+}
+function onField(field, val) {
+  G.cards[G.activeIdx][field] = val;
+  const card = G.cards[G.activeIdx];
+  const cv = document.getElementById('cv_' + card.id);
+  if (cv) document.fonts.ready.then(() => drawCard(cv, card));
+  renderCardList();
+}
+function selectCard(i) {
+  G.activeIdx = i;
+  updateActiveHighlight(); renderCardList(); renderEditor();
+  const wrap = document.querySelector('.card-wrap[data-i="'+i+'"]');
+  if (wrap) wrap.scrollIntoView({ behavior:'smooth', block:'nearest' });
+}
+function addCard(type) {
+  const newCard = type === 'content'
+    ? { id:_uid++, type:'content', heading:'새 포인트', body:'내용을 입력하세요.', imgData:null, _imgEl:null, imgMode:'bottom', imgOpacity:100 }
+    : { id:_uid++, type:'end', message:'감사합니다 🙏', cta:'팔로우하고 더 많은 정보를 받아보세요', handle:'@yourhandle', imgData:null, _imgEl:null, imgMode:'bg', imgOpacity:50 };
+
+  let insertAt = G.cards.length;
+  if (type === 'content') {
+    for (let k = G.cards.length-1; k >= 0; k--) {
+      if (G.cards[k].type === 'end') { insertAt = k; break; }
+    }
+  }
+  G.cards.splice(insertAt, 0, newCard);
+  G.activeIdx = insertAt;
+  rebuildAndRender();
+}
+function deleteCard(i) {
+  if (G.cards[i].type === 'cover') { alert('커버 카드는 삭제할 수 없습니다.'); return; }
+  if (!confirm('이 카드를 삭제하시겠습니까?')) return;
+  G.cards.splice(i, 1);
+  if (G.activeIdx >= G.cards.length) G.activeIdx = G.cards.length - 1;
+  rebuildAndRender();
+}
+
+// ================================================================
+// DOWNLOAD
+// ================================================================
+function dlCard(i) {
+  const card = G.cards[i];
+  const cv = document.getElementById('cv_' + card.id);
+  if (!cv) return;
+  const a = document.createElement('a');
+  a.download = `card_${String(i+1).padStart(2,'0')}_${card.type}.png`;
+  a.href = cv.toDataURL('image/png');
+  a.click();
+}
+async function downloadAll() {
+  const ov = document.getElementById('overlay');
+  ov.classList.add('show');
+  await sleep(80);
+  for (let i = 0; i < G.cards.length; i++) { await sleep(70); dlCard(i); }
+  ov.classList.remove('show');
+}
+function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+// ================================================================
+// UTILS
+// ================================================================
+function esc(s) {
+  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ================================================================
+// INIT
+// ================================================================
+async function init() {
+  const notice = document.getElementById('fontNotice');
+  notice.classList.add('show');
+  try {
+    await Promise.all([
+      document.fonts.load("300 16px 'Noto Sans KR'"),
+      document.fonts.load("400 16px 'Noto Sans KR'"),
+      document.fonts.load("500 16px 'Noto Sans KR'"),
+      document.fonts.load("700 16px 'Noto Sans KR'"),
+      document.fonts.load("900 16px 'Noto Sans KR'"),
+    ]);
+  } catch(e) {}
+  notice.classList.remove('show');
+  rebuildAndRender();
+}
+document.addEventListener('DOMContentLoaded', init);
+</script>
+</body>
+</html>
